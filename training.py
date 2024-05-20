@@ -9,6 +9,9 @@ import forward_models
 from functools import partial
 import shutil
 
+from PIL import Image
+import sys
+
 
 def train(model, train_dataloader, steps, lr, steps_til_summary,
           steps_til_checkpoint, model_dir, loss_fn, summary_fn,
@@ -53,6 +56,10 @@ def train(model, train_dataloader, steps, lr, steps_til_summary,
 
     checkpoints_dir = os.path.join(model_dir_postfixed, 'checkpoints')
     utils.cond_mkdir(checkpoints_dir)
+
+    imgs_dir = os.path.join(model_dir_postfixed, 'imgs')
+    utils.cond_mkdir(imgs_dir)
+
 
     writer = SummaryWriter(summaries_dir)
 
@@ -103,6 +110,16 @@ def train(model, train_dataloader, steps, lr, steps_til_summary,
             model_output = model(model_input)
             losses = loss_fn(model_output, gt)
 
+            # dvv code: manually fit  
+            if not step % steps_til_checkpoint and step:
+                out = model_output['model_out']['output']
+                out = torch.clamp(out, 0, 1)
+                n = int(int(out.shape[1]) ** 0.5) # get length, width of image
+                out = out.view(n, n, 3).detach().cpu().numpy()
+                img = Image.fromarray((out * 255).astype('uint8'), 'RGB')
+                fn_img = os.path.join(imgs_dir, f'img_s{step}.png')
+                img.save(fn_img)
+
             train_loss = 0.
             for loss_name, loss in losses.items():
                 single_loss = loss.mean()
@@ -124,7 +141,7 @@ def train(model, train_dataloader, steps, lr, steps_til_summary,
                 torch.save(model.state_dict(),
                            os.path.join(checkpoints_dir,
                                         'model_current.pth'))
-                summary_fn(model, model_input, gt, model_output, writer, step)
+                #summary_fn(model, model_input, gt, model_output, writer, step)
 
             if not use_lbfgs:
                 optim.zero_grad(set_to_none=True)

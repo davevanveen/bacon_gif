@@ -28,7 +28,7 @@ p.add_argument('--experiment_name', type=str, default='train_img',
                help='path to directory where checkpoints & tensorboard events will be saved.')
 
 # general training options
-p.add_argument('--model', default='mfn', choices=['mfn', 'mlp'],
+p.add_argument('--model', default='mlp', choices=['mlp'],
                help='use MFN or standard MLP')
 p.add_argument('--batch_size', type=int, default=1)
 p.add_argument('--hidden_features', type=int, default=32)
@@ -119,10 +119,11 @@ def train():
 def init_dataloader(opt):
     ''' load image datasets, dataloader '''
 
-    if opt.img_fn == '../data/lighthouse.png':
-        url = 'http://www.cs.albany.edu/~xypan/research/img/Kodak/kodim19.png'
-    else:
-        url = None
+    #opt.img_fn = '../data/head_gt.png' # dragon
+    #opt.img_fn = '../data/rickroll.png' # rickroll
+    opt.img_fn = '../data/venice.JPG' 
+    #opt.img_fn = '../data/death_valley.JPG' 
+    url = None
 
     # init datasets
     trn_dataset = dataio.ImageFile(opt.img_fn, grayscale=opt.grayscale, resolution=(opt.res, opt.res), url=url)
@@ -147,49 +148,19 @@ def init_dataloader(opt):
 
 def init_model(opt):
 
-    if opt.grayscale:
-        out_features = 1
-    else:
-        out_features = 3
+    out_features = 3
 
-    if opt.model == 'mlp':
+    m = modules.CoordinateNet
 
-        if opt.multiscale:
-            m = modules.MultiscaleCoordinateNet
-        else:
-            m = modules.CoordinateNet
-
-        model = m(nl=opt.activation,
-                  in_features=2,
-                  out_features=out_features,
-                  hidden_features=opt.hidden_features,
-                  num_hidden_layers=opt.hidden_layers,
-                  w0=opt.w0,
-                  pe_scale=opt.pe_scale,
-                  no_pe=opt.no_pe,
-                  integrated_pe=opt.ipe)
-
-    elif opt.model == 'mfn':
-
-        if opt.multiscale:
-            m = modules.MultiscaleBACON
-        else:
-            m = modules.BACON
-
-        input_scales = [1/8, 1/8, 1/4, 1/4, 1/4]
-        output_layers = [1, 2, 4]
-
-        model = m(2, opt.hidden_features, out_size=out_features,
-                  hidden_layers=opt.hidden_layers,
-                  bias=True,
-                  frequency=(opt.res, opt.res),
-                  quantization_interval=2*np.pi,
-                  input_scales=input_scales,
-                  output_layers=output_layers,
-                  reuse_filters=False)
-
-    else:
-        raise ValueError('model must be mlp or mfn')
+    model = m(nl=opt.activation,
+                in_features=2,
+                out_features=out_features,
+                hidden_features=opt.hidden_features,
+                num_hidden_layers=opt.hidden_layers,
+                w0=opt.w0,
+                pe_scale=opt.pe_scale,
+                no_pe=opt.no_pe,
+                integrated_pe=opt.ipe)
 
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])

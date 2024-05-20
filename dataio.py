@@ -215,7 +215,8 @@ class ImageFile(Dataset):
 
         if resolution is not None:
             self.resolution = resolution
-            self.img = self.img.resize(resolution, Image.ANTIALIAS)
+            #self.img = self.img.resize(resolution, Image.ANTIALIAS)
+            self.img = self.img.resize(resolution, Image.Resampling.LANCZOS)
 
         self.img = np.array(self.img)
         self.img = self.img.astype(np.float32)/255.
